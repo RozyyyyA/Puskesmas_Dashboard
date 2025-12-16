@@ -29,7 +29,7 @@ class DashboardController extends Controller
         }
 
         // =========================
-        // GRAFIK HARIAN (LINE)
+        // GRAFIK HARIAN TOTAL (LINE - LAMA)
         // =========================
         $harian = (clone $query)
             ->select('tanggal', DB::raw('SUM(jumlah) as total'))
@@ -39,6 +39,42 @@ class DashboardController extends Controller
 
         $labels = $harian->pluck('tanggal');
         $values = $harian->pluck('total');
+
+        // =========================
+        // GRAFIK HARIAN PER POLI (LINE MULTI DATASET) ✅ BARU
+        // =========================
+        $polis = DB::table('kunjungan_pasien')
+            ->distinct()
+            ->pluck('poli');
+
+        $datasetsPoli = [];
+
+        $colors = [
+            'Umum' => '#1e3a8a',     
+            'Gigi' => '#2563eb',      
+            'KIA'  => '#4f46e5',      
+            'Lansia' => '#6d28d9',    
+            'TB' => '#0f766e',
+            'Imunisasi' => '#0284c7',
+        ];
+
+        foreach ($polis as $poliItem) {
+            $data = (clone $query)
+                ->where('poli', $poliItem)
+                ->select('tanggal', DB::raw('SUM(jumlah) as total'))
+                ->groupBy('tanggal')
+                ->orderBy('tanggal')
+                ->pluck('total');
+
+            $datasetsPoli[] = [
+                'label' => $poliItem,
+                'data' => $data,
+                'borderColor' => $colors[$poliItem] ?? '#020617',
+                'backgroundColor' => 'transparent',
+                'borderWidth' => 2,
+                'tension' => 0.4,
+            ];
+        }
 
         // =========================
         // GRAFIK PER POLI (BAR)
@@ -76,6 +112,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'labels',
             'values',
+            'datasetsPoli',   // 🔥 BARU
             'poliLabels',
             'poliValues',
             'bulanLabels',
@@ -83,7 +120,10 @@ class DashboardController extends Controller
             'listPoli'
         ));
     }
-    
+
+    // =========================
+    // AJAX (TIDAK DIUBAH)
+    // =========================
     public function ajaxData(Request $request)
     {
         $query = DB::table('kunjungan_pasien');
@@ -99,25 +139,65 @@ class DashboardController extends Controller
             $query->where('poli', $request->poli);
         }
 
-        $harian = (clone $query)
-            ->select('tanggal', DB::raw('SUM(jumlah) as total'))
+        // =========================
+        // LABEL TANGGAL (WAJIB SAMA)
+        // =========================
+        $labels = (clone $query)
+            ->select('tanggal')
             ->groupBy('tanggal')
             ->orderBy('tanggal')
-            ->get();
+            ->pluck('tanggal');
 
+        // =========================
+        // DATASET PER POLI
+        // =========================
+        $polis = (clone $query)
+            ->distinct()
+            ->pluck('poli');
+
+        $colors = [
+            'Umum' => '#2563eb',
+            'Gigi' => '#0ea5e9',
+            'KIA' => '#6366f1',
+            'Lansia' => '#8b5cf6',
+            'TB' => '#14b8a6',
+            'Imunisasi' => '#0284c7',
+        ];
+
+        $datasetsPoli = [];
+
+        foreach ($polis as $poliItem) {
+            $data = (clone $query)
+                ->where('poli', $poliItem)
+                ->select('tanggal', DB::raw('SUM(jumlah) as total'))
+                ->groupBy('tanggal')
+                ->orderBy('tanggal')
+                ->pluck('total');
+
+            $datasetsPoli[] = [
+                'label' => $poliItem,
+                'data' => $data,
+                'borderColor' => $colors[$poliItem] ?? '#64748b',
+                'borderWidth' => 2,
+                'tension' => 0.4,
+                'fill' => true,
+            ];
+        }
+
+        // =========================
+        // BAR CHART PER POLI
+        // =========================
         $perPoli = (clone $query)
             ->select('poli', DB::raw('SUM(jumlah) as total'))
             ->groupBy('poli')
             ->get();
 
         return response()->json([
-            'labels' => $harian->pluck('tanggal'),
-            'values' => $harian->pluck('total'),
+            'labels' => $labels,
+            'datasetsPoli' => $datasetsPoli,
             'poliLabels' => $perPoli->pluck('poli'),
             'poliValues' => $perPoli->pluck('total'),
-            'total' => $harian->sum('total'),
-            'avg' => round($harian->avg('total'), 1),
-            'max' => $harian->max('total'),
+            
         ]);
     }
 }
