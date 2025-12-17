@@ -140,7 +140,7 @@ class DashboardController extends Controller
         }
 
         // =========================
-        // LABEL TANGGAL (WAJIB SAMA)
+        // LABEL TANGGAL
         // =========================
         $labels = (clone $query)
             ->select('tanggal')
@@ -165,7 +165,6 @@ class DashboardController extends Controller
         ];
 
         $datasetsPoli = [];
-
         foreach ($polis as $poliItem) {
             $data = (clone $query)
                 ->where('poli', $poliItem)
@@ -192,12 +191,25 @@ class DashboardController extends Controller
             ->groupBy('poli')
             ->get();
 
+        // =========================
+        // SUMMARY CARD (TAMBAHKAN DI SINI)
+        // =========================
+        $summaryQuery = (clone $query);
+        $total = $summaryQuery->sum('jumlah');
+        $avg   = $summaryQuery->avg('jumlah');
+        $max   = $summaryQuery->max('jumlah');
+
         return response()->json([
             'labels' => $labels,
             'datasetsPoli' => $datasetsPoli,
             'poliLabels' => $perPoli->pluck('poli'),
             'poliValues' => $perPoli->pluck('total'),
-            
+            'summary' => [
+                'total' => $total,
+                'avg'   => round($avg, 1),
+                'max'   => $max,
+            ],
         ]);
     }
+
 }

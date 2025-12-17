@@ -256,7 +256,7 @@
                         <p class="text-xs uppercase tracking-wide opacity-70">
                             Total Kunjungan
                         </p>
-                        <p class="text-2xl font-bold mt-1">
+                        <p class="text-2xl font-bold mt-1" id="totalKunjungan"">
                             {{ array_sum($values->toArray()) }}
                         </p>
                     </div>
@@ -282,7 +282,7 @@
                         <p class="text-xs uppercase tracking-wide opacity-70">
                             Rata-rata / Hari
                         </p>
-                        <p class="text-2xl font-bold mt-1">
+                        <p class="text-2xl font-bold mt-1" id="rataRata">
                             {{ round($values->avg(), 1) }}
                         </p>
                     </div>
@@ -308,7 +308,7 @@
                         <p class="text-xs uppercase tracking-wide opacity-70">
                             Kunjungan Tertinggi
                         </p>
-                        <p class="text-2xl font-bold mt-1">
+                        <p class="text-2xl font-bold mt-1" id="kunjunganTertinggi">
                             {{ $values->max() }}
                         </p>
                     </div>
@@ -404,7 +404,15 @@ function runFilter() {
             // ===== UPDATE BAR CHART =====
             poliChart.data.labels = data.poliLabels;
             poliChart.data.datasets[0].data = data.poliValues;
+            poliChart.data.datasets[0].backgroundColor = data.poliLabels.map(
+                poli => poliColors[poli] ?? '#334155'
+            );
             poliChart.update('active');
+
+            // ===== UPDATE SUMMARY CARD =====
+            document.getElementById('totalKunjungan').innerText = data.summary.total;
+            document.getElementById('rataRata').innerText = data.summary.avg;
+            document.getElementById('kunjunganTertinggi').innerText = data.summary.max;
         });
 }
 
